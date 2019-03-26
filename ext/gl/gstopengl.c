@@ -123,8 +123,9 @@ plugin_init (GstPlugin * plugin)
     XInitThreads ();
 #endif
 
+  GST_INFO("[AJ] Set glimagesink rank to GST_RANK_PRIMARY\n");
   if (!gst_element_register (plugin, "glimagesink",
-          GST_RANK_SECONDARY, gst_gl_image_sink_bin_get_type ())) {
+          GST_RANK_PRIMARY, gst_gl_image_sink_bin_get_type ())) {
     return FALSE;
   }
 
