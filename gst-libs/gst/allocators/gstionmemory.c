@@ -177,11 +177,17 @@ gst_ion_alloc_alloc (GstAllocator * allocator, gsize size,
     GstAllocationParams * params)
 {
   GstIONAllocator *self = GST_ION_ALLOCATOR (allocator);
+
 #if LINUX_VERSION_CODE < KERNEL_VERSION(4, 14, 0)
+#define LEGACY_ION_API
+#endif
+
   struct ion_allocation_data allocation_data = { 0 };
+#ifdef ION_LEGACY_API
   struct ion_fd_data fd_data = { 0 };
   struct ion_handle_data handle_data = { 0 };
   ion_user_handle_t ion_handle;
+#endif
   GstMemory *mem;
   gsize ion_size;
   gint dma_fd = -1;
@@ -194,13 +200,16 @@ gst_ion_alloc_alloc (GstAllocator * allocator, gsize size,
 
   ion_size = size + params->prefix + params->padding;
   allocation_data.len = ion_size;
+#ifdef LEGACY_ION_API
   allocation_data.align = params->align;
+#endif
   allocation_data.heap_id_mask = 1 << self->heap_id;
   allocation_data.flags = self->flags;
   if (gst_ion_ioctl (self->fd, ION_IOC_ALLOC, &allocation_data) < 0) {
     GST_ERROR ("ion allocate failed.");
     return NULL;
   }
+#ifdef LEGACY_ION_API
   ion_handle = allocation_data.handle;
 
   fd_data.handle = ion_handle;
@@ -213,8 +222,11 @@ gst_ion_alloc_alloc (GstAllocator * allocator, gsize size,
 
   handle_data.handle = ion_handle;
   gst_ion_ioctl (self->fd, ION_IOC_FREE, &handle_data);
-
 #else
+  dma_fd = allocation_data.fd;
+#endif
+
+#if 0
   gint heapCnt = 0;
   gint heap_mask = 0;
   GstMemory *mem;
@@ -241,6 +253,7 @@ gst_ion_alloc_alloc (GstAllocator * allocator, gsize size,
     return NULL;
   }
 
+//AJ-NOTE: Something is wrong here!!!
   for (gint i=0; i<heapCnt; i++) {
     if (ihd[i].type == ION_HEAP_TYPE_DMA) {
       heap_mask |=  1 << ihd[i].heap_id;
@@ -268,16 +281,17 @@ gst_ion_alloc_alloc (GstAllocator * allocator, gsize size,
 
   return mem;
 
+#ifdef LEGACY_ION_API
 bail:
   if (dma_fd >= 0) {
     close (dma_fd);
   }
-#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 14, 0)
+
   handle_data.handle = ion_handle;
   gst_ion_ioctl (self->fd, ION_IOC_FREE, &handle_data);
-#endif
 
   return NULL;
+#endif  
 }
 
 static void
