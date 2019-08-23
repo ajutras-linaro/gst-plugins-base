@@ -105,6 +105,10 @@ GST_ALLOCATORS_API
 GstMemory    * gst_dmabuf_allocator_alloc (GstAllocator * allocator, gint fd, gsize size);
 
 GST_ALLOCATORS_API
+GstMemory    * gst_dmabuf_allocator_alloc_secure (GstAllocator * allocator, gint fd, gsize size);
+
+
+GST_ALLOCATORS_API
 gint           gst_dmabuf_memory_get_fd (GstMemory * mem);
 
 GST_ALLOCATORS_API

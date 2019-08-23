@@ -162,12 +162,17 @@ gst_ion_allocator_vpu_obtain (void)
 {
   static GOnce ion_allocator_vpu_once = G_ONCE_INIT;
   GstAllocator *allocator;
+  GstIONAllocator *self;
 
   g_once (&ion_allocator_vpu_once, (GThreadFunc) gst_ion_mem_init, GST_ALLOCATOR_ION_VPU);
 
   allocator = gst_allocator_find (GST_ALLOCATOR_ION_VPU);
   if (allocator == NULL)
     GST_WARNING ("No allocator named %s found", GST_ALLOCATOR_ION_VPU);
+
+  /* Configure as secure */
+  self = GST_ION_ALLOCATOR (allocator);
+  self->is_secure = TRUE;
 
   return allocator;
 }
@@ -274,7 +279,11 @@ gst_ion_alloc_alloc (GstAllocator * allocator, gsize size,
   dma_fd = data.fd;
 #endif
 
-  mem = gst_dmabuf_allocator_alloc (allocator, dma_fd, size);
+  if (self->is_secure) {
+    mem = gst_dmabuf_allocator_alloc_secure (allocator, dma_fd, size);
+  } else {
+    mem = gst_dmabuf_allocator_alloc (allocator, dma_fd, size);
+  }
 
   GST_DEBUG ("ion allocated size: %" G_GSIZE_FORMAT "DMA FD: %d", ion_size,
       dma_fd);
@@ -381,4 +390,5 @@ gst_ion_allocator_init (GstIONAllocator * self)
 
   self->heap_id = DEFAULT_HEAP_ID;
   self->flags = DEFAULT_FLAG;
+  self->is_secure = FALSE;
 }

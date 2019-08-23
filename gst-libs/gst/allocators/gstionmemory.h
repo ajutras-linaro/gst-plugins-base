@@ -51,6 +51,7 @@ struct _GstIONAllocator
   gint fd;
   guint heap_id;
   guint flags;
+  gboolean is_secure;
 };
 
 struct _GstIONAllocatorClass
