@@ -51,6 +51,7 @@ typedef struct
   gint mmapping_flags;
   gint mmap_count;
   GMutex lock;
+  gpointer shared_data;
 } GstFdMemory;
 
 static void
@@ -59,7 +60,11 @@ gst_fd_mem_free (GstAllocator * allocator, GstMemory * gmem)
 #ifdef HAVE_MMAP
   GstFdMemory *mem = (GstFdMemory *) gmem;
 
-  if (mem->data) {
+  if (mem->flags & GST_FD_MEMORY_FLAG_SECURE) {
+    if (mem->shared_data != NULL) {
+      g_free(mem->shared_data);
+    }
+  } else if (mem->data) {
     if (!(mem->flags & GST_FD_MEMORY_FLAG_KEEP_MAPPED))
       g_warning (G_STRLOC ":%s: Freeing memory %p still mapped", G_STRFUNC,
           mem);
@@ -106,7 +111,19 @@ gst_fd_mem_map (GstMemory * gmem, gsize maxsize, GstMapFlags flags)
     }
   }
 
-  if (mem->fd != -1) {
+  if (mem->flags & GST_FD_MEMORY_FLAG_SECURE) {
+    /* Allocate a shared memory buffer used for metadata and used it as mapped
+     * memory. */
+    if(mem->shared_data == NULL) {
+      mem->shared_data = g_malloc(gmem->maxsize);
+      if (mem->shared_data == NULL) {
+        GST_DEBUG("out of system memory");
+        goto out;
+      }
+    }
+    mem->data = mem->shared_data;
+    prot = PROT_READ | PROT_WRITE;
+  } else if (mem->fd != -1) {
     gint flags;
 
     flags =
@@ -163,7 +180,9 @@ gst_fd_mem_unmap (GstMemory * gmem)
 
   g_mutex_lock (&mem->lock);
   if (mem->data && !(--mem->mmap_count)) {
-    munmap ((void *) mem->data, gmem->maxsize);
+    if ((mem->flags & GST_FD_MEMORY_FLAG_SECURE) == 0) {
+      munmap ((void *) mem->data, gmem->maxsize);
+    }
     mem->data = NULL;
     mem->mmapping_flags = 0;
     GST_DEBUG ("%p: fd %d unmapped", mem, mem->fd);
