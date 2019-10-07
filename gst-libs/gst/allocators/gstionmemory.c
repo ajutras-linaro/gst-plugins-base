@@ -41,7 +41,7 @@ GST_DEBUG_CATEGORY_STATIC (ion_allocator_debug);
 
 #define gst_ion_allocator_parent_class parent_class
 
-#define DEFAULT_HEAP_ID  0
+#define DEFAULT_HEAP_ID  4
 #define DEFAULT_FLAG     0
 
 enum
