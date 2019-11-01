@@ -41,7 +41,9 @@ GST_DEBUG_CATEGORY_STATIC (ion_allocator_debug);
 
 #define gst_ion_allocator_parent_class parent_class
 
-#define DEFAULT_HEAP_ID  4
+#define INVALID_HEAP_ID (G_MAXUINT)
+
+#define DEFAULT_HEAP_ID  0
 #define DEFAULT_FLAG     0
 
 enum
@@ -123,6 +125,41 @@ gst_ion_ioctl (gint fd, gint req, void *arg)
   return ret;
 }
 
+
+static guint gst_ion_get_heap_id(GstIONAllocator *self, const gchar *heap_name)
+{
+    #define MAX_HEAP_COUNT 32
+
+    struct ion_heap_query query_data;
+    struct ion_heap_data heap_data[MAX_HEAP_COUNT];
+    uint32_t idx;
+
+    memset(&query_data, 0, sizeof(query_data));
+    memset(&heap_data[0], 0, sizeof(heap_data));
+    query_data.cnt = MAX_HEAP_COUNT;
+    query_data.heaps = (unsigned long int)&heap_data[0];
+    if (ioctl(self->fd, ION_IOC_HEAP_QUERY, &query_data) < 0) {
+      GST_ERROR("Cannot query ION heap data (%s)", strerror(errno));
+      return INVALID_HEAP_ID;
+    }
+
+    for (idx = 0; idx < query_data.cnt; idx++)
+    {
+      GST_DEBUG("heap[%u] name is: %s", idx, heap_data[idx].name);
+      if (strcmp(heap_data[idx].name, heap_name) == 0)
+        break;
+    }
+    if (idx >= query_data.cnt) {
+      GST_ERROR("Cannot find %s heap\n", heap_name);
+      return INVALID_HEAP_ID;
+    }
+
+    GST_INFO("Heap ID for %s heap is %u", heap_name, heap_data[idx].heap_id);
+
+    return heap_data[idx].heap_id;
+}
+
+
 static void
 gst_ion_mem_init (const gchar *name)
 {
@@ -138,6 +175,12 @@ gst_ion_mem_init (const gchar *name)
   }
 
   self->fd = fd;
+
+  self->heap_id = gst_ion_get_heap_id(self, name);
+  if(self->heap_id == INVALID_HEAP_ID) {
+    g_object_unref (self);
+    return;
+  }
 
   gst_allocator_register (name, allocator);
 }
