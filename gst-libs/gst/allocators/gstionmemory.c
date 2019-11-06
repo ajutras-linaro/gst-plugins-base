@@ -177,7 +177,7 @@ gst_ion_mem_init (const gchar *name)
 
   self->fd = fd;
 
-  if(strcmp(name, GST_ALLOCATOR_ION_VPU_HEAP_NAME) == 0) {
+  if(strcmp(name, GST_ALLOCATOR_ION_VPU) == 0) {
     heap_name = GST_ALLOCATOR_ION_VPU_HEAP_NAME;
   }
 
