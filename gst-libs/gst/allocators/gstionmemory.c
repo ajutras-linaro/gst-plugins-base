@@ -166,6 +166,7 @@ gst_ion_mem_init (const gchar *name)
   GstAllocator *allocator = g_object_new (gst_ion_allocator_get_type (), NULL);
   GstIONAllocator *self = GST_ION_ALLOCATOR (allocator);
   gint fd;
+  const gchar *heap_name = GST_ALLOCATOR_ION_DISPLAY_HEAP_NAME;
 
   fd = open ("/dev/ion", O_RDWR);
   if (fd < 0) {
@@ -176,7 +177,11 @@ gst_ion_mem_init (const gchar *name)
 
   self->fd = fd;
 
-  self->heap_id = gst_ion_get_heap_id(self, name);
+  if(strcmp(name, GST_ALLOCATOR_ION_VPU_HEAP_NAME) == 0) {
+    heap_name = GST_ALLOCATOR_ION_VPU_HEAP_NAME;
+  }
+
+  self->heap_id = gst_ion_get_heap_id(self, heap_name);
   if(self->heap_id == INVALID_HEAP_ID) {
     g_object_unref (self);
     return;
