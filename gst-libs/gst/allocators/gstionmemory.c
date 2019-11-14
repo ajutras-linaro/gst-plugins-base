@@ -251,7 +251,11 @@ gst_ion_alloc_alloc (GstAllocator * allocator, gsize size,
     return NULL;
   }
 
+  GST_DEBUG ("[AJ] requested size: %" G_GSIZE_FORMAT, size);
+
   ion_size = size + params->prefix + params->padding;
+  GST_DEBUG ("[AJ] ion_size: %" G_GSIZE_FORMAT, ion_size);
+
   allocation_data.len = ion_size;
 #ifdef LEGACY_ION_API
   allocation_data.align = params->align;
