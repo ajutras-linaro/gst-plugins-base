@@ -31,6 +31,10 @@ typedef struct _GstIONAllocatorClass GstIONAllocatorClass;
 typedef struct _GstIONMemory GstIONMemory;
 
 #define GST_ALLOCATOR_ION "ionmem"
+#define GST_ALLOCATOR_ION_VPU "vpuionmem"
+
+#define GST_ALLOCATOR_ION_DISPLAY_HEAP_NAME "display"
+#define GST_ALLOCATOR_ION_VPU_HEAP_NAME "optee"
 
 #define GST_TYPE_ION_ALLOCATOR gst_ion_allocator_get_type ()
 #define GST_IS_ION_ALLOCATOR(obj) (G_TYPE_CHECK_INSTANCE_TYPE ((obj), \
@@ -62,6 +66,9 @@ GType gst_ion_allocator_get_type (void);
 
 GST_EXPORT
 GstAllocator* gst_ion_allocator_obtain (void);
+
+GST_EXPORT
+GstAllocator* gst_ion_allocator_vpu_obtain (void);
 
 G_END_DECLS
 
