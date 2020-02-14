@@ -84,6 +84,8 @@ static gpointer
 gst_fd_mem_map (GstMemory * gmem, gsize maxsize, GstMapFlags flags)
 {
 #ifdef HAVE_MMAP
+#define SECURE_BUFFER_SHARED_DATA_SIZE (4*1024*1024)
+
   GstFdMemory *mem = (GstFdMemory *) gmem;
   gint prot;
   gpointer ret = NULL;
@@ -114,10 +116,14 @@ gst_fd_mem_map (GstMemory * gmem, gsize maxsize, GstMapFlags flags)
   if (mem->flags & GST_FD_MEMORY_FLAG_SECURE) {
     /* Allocate a shared memory buffer used for metadata and used it as mapped
      * memory. */
+    if(gmem->maxsize > SECURE_BUFFER_SHARED_DATA_SIZE){
+      GST_ERROR("cannot map %" G_GSIZE_FORMAT "bytes", maxsize);
+      goto out;
+    }
     if(mem->shared_data == NULL) {
-      mem->shared_data = g_malloc(gmem->maxsize);
+      mem->shared_data = g_malloc(SECURE_BUFFER_SHARED_DATA_SIZE); // TODO - Avoid hardcoded value
       if (mem->shared_data == NULL) {
-        GST_DEBUG("out of system memory");
+        GST_ERROR("out of system memory");
         goto out;
       }
     }
