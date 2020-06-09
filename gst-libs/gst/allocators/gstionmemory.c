@@ -166,7 +166,7 @@ gst_ion_mem_init (const gchar *name)
   GstAllocator *allocator = g_object_new (gst_ion_allocator_get_type (), NULL);
   GstIONAllocator *self = GST_ION_ALLOCATOR (allocator);
   gint fd;
-  const gchar *heap_name = GST_ALLOCATOR_ION_DISPLAY_HEAP_NAME;
+  const gchar *heap_name = NULL;
 
   fd = open ("/dev/ion", O_RDWR);
   if (fd < 0) {
@@ -177,14 +177,20 @@ gst_ion_mem_init (const gchar *name)
 
   self->fd = fd;
 
-  if(strcmp(name, GST_ALLOCATOR_ION_VPU) == 0) {
-    heap_name = GST_ALLOCATOR_ION_VPU_HEAP_NAME;
+  if(strcmp(name, GST_ALLOCATOR_ION_SECURE_VPU) == 0) {
+    heap_name = GST_ALLOCATOR_ION_SECURE_VPU_HEAP_NAME;
+  } else if (strcmp(name, GST_ALLOCATOR_ION_SECURE_DISPLAY) == 0) {
+    heap_name = GST_ALLOCATOR_ION_SECURE_DISPLAY_HEAP_NAME;
   }
 
-  self->heap_id = gst_ion_get_heap_id(self, heap_name);
-  if(self->heap_id == INVALID_HEAP_ID) {
-    g_object_unref (self);
-    return;
+  if (heap_name != NULL) {
+    self->heap_id = gst_ion_get_heap_id(self, heap_name);
+    if(self->heap_id == INVALID_HEAP_ID) {
+      g_object_unref (self);
+      return;
+    }
+  } else {
+    self->heap_id = DEFAULT_HEAP_ID;
   }
 
   gst_allocator_register (name, allocator);
@@ -212,15 +218,36 @@ gst_ion_allocator_vpu_obtain (void)
   GstAllocator *allocator;
   GstIONAllocator *self;
 
-  g_once (&ion_allocator_vpu_once, (GThreadFunc) gst_ion_mem_init, GST_ALLOCATOR_ION_VPU);
+  g_once (&ion_allocator_vpu_once, (GThreadFunc) gst_ion_mem_init, GST_ALLOCATOR_ION_SECURE_VPU);
 
-  allocator = gst_allocator_find (GST_ALLOCATOR_ION_VPU);
+  allocator = gst_allocator_find (GST_ALLOCATOR_ION_SECURE_VPU);
   if (allocator == NULL)
-    GST_WARNING ("No allocator named %s found", GST_ALLOCATOR_ION_VPU);
+    GST_WARNING ("No allocator named %s found", GST_ALLOCATOR_ION_SECURE_VPU);
 
-  /* Configure as secure */
   self = GST_ION_ALLOCATOR (allocator);
+  /* Configure as secure: Allocated GstBuffer will hold two buffers: one for
+     metadata in shared memory and one for the decrypted data in secure ion
+     heap. */
   self->is_secure = TRUE;
+
+  return allocator;
+}
+
+GstAllocator *
+gst_ion_allocator_display_obtain (void)
+{
+  static GOnce ion_allocator_display_once = G_ONCE_INIT;
+  GstAllocator *allocator;
+  GstIONAllocator *self;
+
+  g_once (&ion_allocator_display_once, (GThreadFunc) gst_ion_mem_init, GST_ALLOCATOR_ION_SECURE_DISPLAY);
+
+  allocator = gst_allocator_find (GST_ALLOCATOR_ION_SECURE_DISPLAY);
+  if (allocator == NULL)
+    GST_WARNING ("No allocator named %s found", GST_ALLOCATOR_ION_SECURE_DISPLAY);
+
+  self = GST_ION_ALLOCATOR (allocator);
+  /* Do not configure as secure which is appropriate for the vpu heap only. */
 
   return allocator;
 }
